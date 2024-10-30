@@ -1,0 +1,95 @@
+local Script = game:GetService("Players").LocalPlayer.PlayerScripts
+
+local playerGui = game.Players.LocalPlayer.PlayerGui
+local ExistingScriptTab = playerGui:FindFirstChild("ScriptTab")
+local TextBox
+
+if ExistingScriptTab then
+    TextBox = ExistingScriptTab:FindFirstChild("TextBox")
+else
+    local ScriptTab = Instance.new("ScreenGui")
+    ScriptTab.Name = "ScriptTab"
+    ScriptTab.IgnoreGuiInset = true
+    ScriptTab.ResetOnSpawn = true
+    ScriptTab.DisplayOrder = 100
+    ScriptTab.Enabled = true
+    ScriptTab.SafeAreaCompatibility = Enum.SafeAreaCompatibility.FullscreenExtension
+    ScriptTab.Parent = playerGui
+
+    TextBox = Instance.new("TextBox")
+    TextBox.Name = "TextBox"
+    TextBox.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TextBox.Size = UDim2.new(0.386997, 0, 0.912409, 0)
+    TextBox.BackgroundColor3 = Color3.new(0.196078, 0.196078, 0.196078)
+    TextBox.BackgroundTransparency = 0
+    TextBox.BorderSizePixel = 0
+    TextBox.Visible = true
+    TextBox.AnchorPoint = Vector2.new(0.5, 0.5)
+    TextBox.LayoutOrder = 0
+    TextBox.Transparency = 0
+    TextBox.Selectable = true
+    TextBox.Active = true
+    TextBox.Draggable = true
+    TextBox.TextSize = 15
+    TextBox.Font = Enum.Font.Code
+    TextBox.TextScaled = false
+    TextBox.TextWrapped = true
+    TextBox.TextXAlignment = Enum.TextXAlignment.Left
+    TextBox.TextYAlignment = Enum.TextYAlignment.Top
+    TextBox.RichText = false
+    TextBox.ClearTextOnFocus = false
+    TextBox.MultiLine = true
+    TextBox.PlaceholderText = "Decompiling"
+    TextBox.PlaceholderColor3 = Color3.new(0.552941, 0.552941, 0.552941)
+    TextBox.ShowNativeInput = true
+    TextBox.MaxVisibleGraphemes = -1
+    TextBox.Parent = ScriptTab
+
+    local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+    UIAspectRatioConstraint.AspectRatio = 1
+    UIAspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize
+    UIAspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width
+    UIAspectRatioConstraint.Parent = TextBox
+
+    local ExitButton = Instance.new("ImageButton")
+    ExitButton.Name = "Exit"
+    ExitButton.Position = UDim2.new(1, -10, 0, 10)
+    ExitButton.Size = UDim2.new(0.07, 0, 0.07, 0)
+    ExitButton.BackgroundColor3 = Color3.new(1, 1, 1)
+    ExitButton.BackgroundTransparency = 1
+    ExitButton.Visible = true
+    ExitButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    ExitButton.Image = "rbxassetid://82696106491493"
+    ExitButton.ImageColor3 = Color3.new(1, 1, 1)
+    ExitButton.ScaleType = Enum.ScaleType.Fit
+    ExitButton.Parent = TextBox
+
+    local UIAspectRatioConstraint2 = Instance.new("UIAspectRatioConstraint")
+    UIAspectRatioConstraint2.AspectRatio = 1
+    UIAspectRatioConstraint2.AspectType = Enum.AspectType.FitWithinMaxSize
+    UIAspectRatioConstraint2.DominantAxis = Enum.DominantAxis.Width
+    UIAspectRatioConstraint2.Parent = ExitButton
+
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Name = "UIStroke"
+    UIStroke.Color = Color3.new(0.196078, 0.196078, 0.196078)
+    UIStroke.Thickness = 6
+    UIStroke.LineJoinMode = Enum.LineJoinMode.Bevel
+    UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    UIStroke.Parent = TextBox
+
+    ExitButton.MouseButton1Click:Connect(function()
+        ScriptTab:Destroy()
+    end)
+end
+
+TextBox.Text = ""
+
+local Success, Result = pcall(env.decompile or function() end, Script)
+
+TextBox.Text = Result
+if not Success then
+    TextBox.TextColor3 = Color3.new(1, 0, 0)
+else
+    TextBox.TextColor3 = Color3.new(1, 1, 1)
+end
