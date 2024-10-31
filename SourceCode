@@ -1,478 +1,95 @@
-if game.Players.LocalPlayer.PlayerGui:FindFirstChild("Roblox-Object-Finder") then
-	game.Players.LocalPlayer.PlayerGui:FindFirstChild("Roblox-Object-Finder"):Destroy()
+local Script = game:GetService("Players").LocalPlayer.PlayerScripts
+
+local playerGui = game.Players.LocalPlayer.PlayerGui
+local ExistingScriptTab = playerGui:FindFirstChild("ScriptTab")
+local TextBox
+
+if ExistingScriptTab then
+    TextBox = ExistingScriptTab:FindFirstChild("TextBox")
+else
+    local ScriptTab = Instance.new("ScreenGui")
+    ScriptTab.Name = "ScriptTab"
+    ScriptTab.IgnoreGuiInset = true
+    ScriptTab.ResetOnSpawn = true
+    ScriptTab.DisplayOrder = 100
+    ScriptTab.Enabled = true
+    ScriptTab.SafeAreaCompatibility = Enum.SafeAreaCompatibility.FullscreenExtension
+    ScriptTab.Parent = playerGui
+
+    TextBox = Instance.new("TextBox")
+    TextBox.Name = "TextBox"
+    TextBox.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TextBox.Size = UDim2.new(0.386997, 0, 0.912409, 0)
+    TextBox.BackgroundColor3 = Color3.new(0.196078, 0.196078, 0.196078)
+    TextBox.BackgroundTransparency = 0
+    TextBox.BorderSizePixel = 0
+    TextBox.Visible = true
+    TextBox.AnchorPoint = Vector2.new(0.5, 0.5)
+    TextBox.LayoutOrder = 0
+    TextBox.Transparency = 0
+    TextBox.Selectable = true
+    TextBox.Active = true
+    TextBox.Draggable = true
+    TextBox.TextSize = 15
+    TextBox.Font = Enum.Font.Code
+    TextBox.TextScaled = false
+    TextBox.TextWrapped = true
+    TextBox.TextXAlignment = Enum.TextXAlignment.Left
+    TextBox.TextYAlignment = Enum.TextYAlignment.Top
+    TextBox.RichText = false
+    TextBox.ClearTextOnFocus = false
+    TextBox.MultiLine = true
+    TextBox.PlaceholderText = "Decompiling"
+    TextBox.PlaceholderColor3 = Color3.new(0.552941, 0.552941, 0.552941)
+    TextBox.ShowNativeInput = true
+    TextBox.MaxVisibleGraphemes = -1
+    TextBox.Parent = ScriptTab
+
+    local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+    UIAspectRatioConstraint.AspectRatio = 1
+    UIAspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize
+    UIAspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width
+    UIAspectRatioConstraint.Parent = TextBox
+
+    local ExitButton = Instance.new("ImageButton")
+    ExitButton.Name = "Exit"
+    ExitButton.Position = UDim2.new(1, -10, 0, 10)
+    ExitButton.Size = UDim2.new(0.07, 0, 0.07, 0)
+    ExitButton.BackgroundColor3 = Color3.new(1, 1, 1)
+    ExitButton.BackgroundTransparency = 1
+    ExitButton.Visible = true
+    ExitButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    ExitButton.Image = "rbxassetid://82696106491493"
+    ExitButton.ImageColor3 = Color3.new(1, 1, 1)
+    ExitButton.ScaleType = Enum.ScaleType.Fit
+    ExitButton.Parent = TextBox
+
+    local UIAspectRatioConstraint2 = Instance.new("UIAspectRatioConstraint")
+    UIAspectRatioConstraint2.AspectRatio = 1
+    UIAspectRatioConstraint2.AspectType = Enum.AspectType.FitWithinMaxSize
+    UIAspectRatioConstraint2.DominantAxis = Enum.DominantAxis.Width
+    UIAspectRatioConstraint2.Parent = ExitButton
+
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Name = "UIStroke"
+    UIStroke.Color = Color3.new(0.196078, 0.196078, 0.196078)
+    UIStroke.Thickness = 6
+    UIStroke.LineJoinMode = Enum.LineJoinMode.Bevel
+    UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    UIStroke.Parent = TextBox
+
+    ExitButton.MouseButton1Click:Connect(function()
+        ScriptTab:Destroy()
+    end)
 end
 
-local ScriptContents = {}
-local ObjectPath = ""
-local ScreenGui = nil
+TextBox.Text = ""
 
-local function ConvertMultipleServicePaths(CodeString)
-	return CodeString:gsub("game:GetService%((%b\"\")%)", function(ServiceCall)
-		local ServiceName = ServiceCall:match('"%s*(.-)%s*"')
-		return "game." .. ServiceName
-	end)
+local Success, Result = pcall(env.decompile or function() end, Script)
+
+TextBox.Text = Result
+if not Success then
+    TextBox.TextColor3 = Color3.new(1, 0, 0)
+else
+    TextBox.TextColor3 = Color3.new(1, 1, 1)
 end
-
-local function SearchForObjectPath(Script, ObjectPath)
-	if not Script then
-		print("Error: script content is nil")
-		return false
-	end
-	if not ObjectPath then
-		print("Error: object path is nil")
-		return false
-	end
-
-	local NormalizedObjectPath = ConvertMultipleServicePaths(ObjectPath)
-	local NormalizedScriptContent = ConvertMultipleServicePaths(Script)
-
-	print("Normalized Object Path: ", NormalizedObjectPath)
-	print("Normalized Script Content: ", NormalizedScriptContent)
-
-	local MainPattern = NormalizedObjectPath:gsub("%.", "%%.")
-	local Patterns = {
-		MainPattern,
-		MainPattern .. '%.FindFirstChild%("%w+"%)',
-		MainPattern .. '%.WaitForChild%("%w+"%)',
-		MainPattern .. '%.FindFirstChild%([%w%p]+%)',
-		MainPattern .. '%.WaitForChild%([%w%p]+%)',
-		MainPattern .. '%["%w+"%]',
-		MainPattern .. '%[%w%]'
-	}
-
-	local Found = false
-	for _, Pattern in ipairs(Patterns) do
-		if NormalizedScriptContent:find(Pattern) then
-			print("Object path or alias access found: '" .. Pattern .. "'")
-			Found = true
-		end
-	end
-
-	if not Found then
-		print("Object path '" .. NormalizedObjectPath .. "' not found in the script.")
-	end
-
-	return Found
-end
-
-local function AddGuiButton(ScriptName)
-	if not ScreenGui then return nil end
-
-	local Button = Instance.new("TextButton")
-	Button.Name = "Button"
-	Button.Position = UDim2.new(0, 0, 0, 0)
-	Button.Size = UDim2.new(1, 0, 0.12, 0)
-	Button.BackgroundColor3 = Color3.new(0.301961, 0.301961, 0.301961)
-	Button.BackgroundTransparency = 0
-	Button.BorderSizePixel = 0
-	Button.BorderColor3 = Color3.new(0, 0, 0)
-	Button.Visible = true
-	Button.ZIndex = 1
-	Button.Rotation = 0
-	Button.AnchorPoint = Vector2.new(0, 0)
-	Button.AutomaticSize = Enum.AutomaticSize.None
-	Button.ClipsDescendants = false
-	Button.LayoutOrder = 0
-	Button.Transparency = 0
-	Button.Selectable = false
-	Button.Active = false
-	Button.Draggable = false
-	Button.Text = ScriptName
-	Button.TextColor3 = Color3.new(1, 1, 1)
-	Button.TextSize = 8
-	Button.Font = Enum.Font.Unknown
-	Button.TextScaled = true
-	Button.TextWrapped = true
-	Button.TextXAlignment = Enum.TextXAlignment.Center
-	Button.TextYAlignment = Enum.TextYAlignment.Center
-	Button.RichText = true
-	Button.AutoButtonColor = false
-	Button.MaxVisibleGraphemes = -1
-	Button.Parent = ScreenGui.Frame.ScrollingFrame
-
-	local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint.Name = "UIAspectRatioConstraint"
-	UIAspectRatioConstraint.AspectRatio = 2.075
-	UIAspectRatioConstraint.AspectType = Enum.AspectType.FitWithinMaxSize
-	UIAspectRatioConstraint.DominantAxis = Enum.DominantAxis.Width
-	UIAspectRatioConstraint.Parent = Button
-
-	return Button
-end
-
-local function ClearScrollingFrame()
-	if ScreenGui and ScreenGui.Frame.ScrollingFrame then
-		for _, Child in pairs(ScreenGui.Frame.ScrollingFrame:GetChildren()) do
-			if Child:IsA("TextButton") then
-				Child:Destroy()
-			end
-		end
-	end
-end
-
-local function UpdateScrollingFrame()
-	if not ScreenGui then return end
-
-	ClearScrollingFrame()
-
-	for ScriptName, ScriptContent in pairs(ScriptContents) do
-		local Button = AddGuiButton(ScriptName)
-		if Button then
-			Button.MouseButton1Click:Connect(function()
-				ScreenGui.Frame.CodeTextBox.Text = ScriptContent
-			end)
-		end
-	end
-
-    task.wait()
-
-	local UIListLayout = ScreenGui.Frame.ScrollingFrame:FindFirstChild("UIListLayout")
-	if UIListLayout then
-		ScreenGui.Frame.ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
-	end
-end
-
-local function SearchScripts()
-	ScriptContents = {}
-
-	for Index, Object in ipairs(game:GetDescendants()) do
-        if not ScreenGui then break end
-		if Object.ClassName == "LocalScript" then
-            coroutine.wrap(function()
-                local ScriptName = Object.Name
-			    local Success, Result = pcall(env.decompile or function() end, Object)
-
-			    if Success then
-				    local UniqueName = ScriptName
-				    local Counter = 1
-				    while ScriptContents[UniqueName] do
-				    	Counter += 1
-				    	UniqueName = ScriptName .. Counter
-				    end
-                    ScriptContents[UniqueName] = Result
-			    end
-
-			end)()
-		end
-		if Index % 100 == 0 then
-			task.wait()
-		end
-	end
-
-	UpdateScrollingFrame()
-end
-
-local function CopyToClipboard(Text)
-	local Success, ErrorMessage = pcall(function()
-		if Clipboard and Clipboard.set then
-			Clipboard.set(Text)
-		elseif CopyString then
-			CopyString(Text)
-		end
-	end)
-	if not Success then
-		warn("Failed to copy to clipboard: " .. ErrorMessage)
-	end
-end
-
-local function AnalyzeScripts()
-	if ObjectPath == "" then
-		warn("Object path is empty!")
-		return
-	end
-
-	local FilteredScripts = {}
-	for ScriptName, ScriptContent in pairs(ScriptContents) do
-		if SearchForObjectPath(ScriptContent, ObjectPath) then
-			FilteredScripts[ScriptName] = ScriptContent
-		end
-	end
-
-	ScriptContents = FilteredScripts
-	UpdateScrollingFrame()
-end
-
-local function SetupUi()
-	local Roblox_Object_Finder = Instance.new("ScreenGui")
-	Roblox_Object_Finder.Name = "Roblox-Object-Finder"
-	Roblox_Object_Finder.IgnoreGuiInset = true
-	Roblox_Object_Finder.ResetOnSpawn = true
-	Roblox_Object_Finder.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	Roblox_Object_Finder.DisplayOrder = 0
-	Roblox_Object_Finder.Enabled = true
-	Roblox_Object_Finder.SafeAreaCompatibility = Enum.SafeAreaCompatibility.FullscreenExtension
-	Roblox_Object_Finder.Parent = game.Players.LocalPlayer.PlayerGui
-
-	local Frame = Instance.new("Frame")
-	Frame.Name = "Frame"
-	Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-	Frame.Size = UDim2.new(0.5, 0, 0.5, 0)
-	Frame.BackgroundColor3 = Color3.new(0.294118, 0.294118, 0.294118)
-	Frame.BackgroundTransparency = 0
-	Frame.BorderSizePixel = 0
-	Frame.BorderColor3 = Color3.new(0, 0, 0)
-	Frame.Visible = true
-	Frame.ZIndex = 1
-	Frame.Rotation = 0
-	Frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	Frame.AutomaticSize = Enum.AutomaticSize.None
-	Frame.ClipsDescendants = false
-	Frame.LayoutOrder = 0
-	Frame.Transparency = 0
-	Frame.Selectable = true
-	Frame.Active = true
-	Frame.Draggable = true
-	Frame.Style = Enum.FrameStyle.Custom
-	Frame.Parent = Roblox_Object_Finder
-
-	local ScrollingFrame = Instance.new("ScrollingFrame")
-	ScrollingFrame.Name = "ScrollingFrame"
-	ScrollingFrame.Position = UDim2.new(0.0139319, 0, 0.029197, 0)
-	ScrollingFrame.Size = UDim2.new(0.1, 0, 0.946716, 0)
-	ScrollingFrame.BackgroundColor3 = Color3.new(0.32549, 0.32549, 0.32549)
-	ScrollingFrame.BackgroundTransparency = 0
-	ScrollingFrame.BorderSizePixel = 0
-	ScrollingFrame.BorderColor3 = Color3.new(0, 0, 0)
-	ScrollingFrame.Visible = true
-	ScrollingFrame.ZIndex = 1
-	ScrollingFrame.Rotation = 0
-	ScrollingFrame.AnchorPoint = Vector2.new(0, 0)
-	ScrollingFrame.AutomaticSize = Enum.AutomaticSize.None
-	ScrollingFrame.ClipsDescendants = true
-	ScrollingFrame.LayoutOrder = 0
-	ScrollingFrame.Transparency = 0
-	ScrollingFrame.Selectable = true
-	ScrollingFrame.Active = true
-	ScrollingFrame.Draggable = false
-	ScrollingFrame.CanvasPosition = Vector2.new(0, 0)
-	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	ScrollingFrame.ScrollBarImageColor3 = Color3.new(0.498039, 0.498039, 0.498039)
-	ScrollingFrame.ScrollBarImageTransparency = 0
-	ScrollingFrame.ScrollBarThickness = 8
-	ScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.XY
-	ScrollingFrame.ScrollingEnabled = true
-	ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.None
-	ScrollingFrame.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
-	ScrollingFrame.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
-	ScrollingFrame.TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png"
-	ScrollingFrame.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
-	ScrollingFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.None
-	ScrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
-	ScrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
-	ScrollingFrame.Parent = Frame
-
-	local UIListLayout = Instance.new("UIListLayout")
-	UIListLayout.Name = "UIListLayout"
-	UIListLayout.Padding = UDim.new(0.01, 0)
-	UIListLayout.FillDirection = Enum.FillDirection.Vertical
-	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	UIListLayout.ItemLineAlignment = Enum.ItemLineAlignment.Automatic
-	UIListLayout.Wraps = false
-	UIListLayout.HorizontalFlex = Enum.UIFlexAlignment.None
-	UIListLayout.VerticalFlex = Enum.UIFlexAlignment.None
-	UIListLayout.Parent = ScrollingFrame
-
-	local CopyToClipboardButton = Instance.new("TextButton")
-	CopyToClipboardButton.Name = "CopyToClipboardButton"
-	CopyToClipboardButton.Position = UDim2.new(0.6977, 0, 0.905109, 0)
-	CopyToClipboardButton.Size = UDim2.new(0.25, 0, 0.07, 0)
-	CopyToClipboardButton.BackgroundColor3 = Color3.new(0.32549, 0.32549, 0.32549)
-	CopyToClipboardButton.BackgroundTransparency = 0
-	CopyToClipboardButton.BorderSizePixel = 0
-	CopyToClipboardButton.BorderColor3 = Color3.new(0, 0, 0)
-	CopyToClipboardButton.Visible = true
-	CopyToClipboardButton.ZIndex = 1
-	CopyToClipboardButton.Rotation = 0
-	CopyToClipboardButton.AnchorPoint = Vector2.new(0, 0)
-	CopyToClipboardButton.AutomaticSize = Enum.AutomaticSize.None
-	CopyToClipboardButton.ClipsDescendants = false
-	CopyToClipboardButton.LayoutOrder = 0
-	CopyToClipboardButton.Transparency = 0
-	CopyToClipboardButton.Selectable = true
-	CopyToClipboardButton.Active = true
-	CopyToClipboardButton.Draggable = false
-	CopyToClipboardButton.Text = "Copy To Clipboard"
-	CopyToClipboardButton.TextColor3 = Color3.new(1, 1, 1)
-	CopyToClipboardButton.TextSize = 14
-	CopyToClipboardButton.Font = Enum.Font.Unknown
-	CopyToClipboardButton.TextScaled = true
-	CopyToClipboardButton.TextWrapped = true
-	CopyToClipboardButton.TextXAlignment = Enum.TextXAlignment.Center
-	CopyToClipboardButton.TextYAlignment = Enum.TextYAlignment.Bottom
-	CopyToClipboardButton.RichText = true
-	CopyToClipboardButton.AutoButtonColor = false
-	CopyToClipboardButton.MaxVisibleGraphemes = -1
-	CopyToClipboardButton.Parent = Frame
-
-	local AnalyseScriptsButton = Instance.new("TextButton")
-	AnalyseScriptsButton.Name = "AnalyseScriptsButton"
-	AnalyseScriptsButton.Position = UDim2.new(0.4257, 0, 0.905109, 0)
-	AnalyseScriptsButton.Size = UDim2.new(0.25, 0, 0.07, 0)
-	AnalyseScriptsButton.BackgroundColor3 = Color3.new(0.32549, 0.32549, 0.32549)
-	AnalyseScriptsButton.BackgroundTransparency = 0
-	AnalyseScriptsButton.BorderSizePixel = 0
-	AnalyseScriptsButton.BorderColor3 = Color3.new(0, 0, 0)
-	AnalyseScriptsButton.Visible = true
-	AnalyseScriptsButton.ZIndex = 1
-	AnalyseScriptsButton.Rotation = 0
-	AnalyseScriptsButton.AnchorPoint = Vector2.new(0, 0)
-	AnalyseScriptsButton.AutomaticSize = Enum.AutomaticSize.None
-	AnalyseScriptsButton.ClipsDescendants = false
-	AnalyseScriptsButton.LayoutOrder = 0
-	AnalyseScriptsButton.Transparency = 0
-	AnalyseScriptsButton.Selectable = true
-	AnalyseScriptsButton.Active = true
-	AnalyseScriptsButton.Draggable = false
-	AnalyseScriptsButton.Text = "Filter Scripts"
-	AnalyseScriptsButton.TextColor3 = Color3.new(1, 1, 1)
-	AnalyseScriptsButton.TextSize = 14
-	AnalyseScriptsButton.Font = Enum.Font.Unknown
-	AnalyseScriptsButton.TextScaled = true
-	AnalyseScriptsButton.TextWrapped = true
-	AnalyseScriptsButton.TextXAlignment = Enum.TextXAlignment.Center
-	AnalyseScriptsButton.TextYAlignment = Enum.TextYAlignment.Bottom
-	AnalyseScriptsButton.RichText = true
-	AnalyseScriptsButton.AutoButtonColor = false
-	AnalyseScriptsButton.MaxVisibleGraphemes = -1
-	AnalyseScriptsButton.Parent = Frame
-
-	local SearchButton = Instance.new("TextButton")
-	SearchButton.Name = "SearchButton"
-	SearchButton.Position = UDim2.new(0.153251, 0, 0.905109, 0)
-	SearchButton.Size = UDim2.new(0.25, 0, 0.07, 0)
-	SearchButton.BackgroundColor3 = Color3.new(0.32549, 0.32549, 0.32549)
-	SearchButton.BackgroundTransparency = 0
-	SearchButton.BorderSizePixel = 0
-	SearchButton.BorderColor3 = Color3.new(0, 0, 0)
-	SearchButton.Visible = true
-	SearchButton.ZIndex = 1
-	SearchButton.Rotation = 0
-	SearchButton.AnchorPoint = Vector2.new(0, 0)
-	SearchButton.AutomaticSize = Enum.AutomaticSize.None
-	SearchButton.ClipsDescendants = false
-	SearchButton.LayoutOrder = 0
-	SearchButton.Transparency = 0
-	SearchButton.Selectable = true
-	SearchButton.Active = true
-	SearchButton.Draggable = false
-	SearchButton.Text = "Search Scripts"
-	SearchButton.TextColor3 = Color3.new(1, 1, 1)
-	SearchButton.TextSize = 14
-	SearchButton.Font = Enum.Font.Unknown
-	SearchButton.TextScaled = true
-	SearchButton.TextWrapped = true
-	SearchButton.TextXAlignment = Enum.TextXAlignment.Center
-	SearchButton.TextYAlignment = Enum.TextYAlignment.Bottom
-	SearchButton.RichText = true
-	SearchButton.AutoButtonColor = false
-	SearchButton.MaxVisibleGraphemes = -1
-	SearchButton.Parent = Frame
-
-	local ObjectPathGui = Instance.new("TextBox")
-	ObjectPathGui.Name = "ObjectPath"
-	ObjectPathGui.Position = UDim2.new(0.130031, 0, 0.791971, 0)
-	ObjectPathGui.Size = UDim2.new(0.817337, 0, 0.0875912, 0)
-	ObjectPathGui.BackgroundColor3 = Color3.new(0.266667, 0.266667, 0.266667)
-	ObjectPathGui.BackgroundTransparency = 0
-	ObjectPathGui.BorderSizePixel = 0
-	ObjectPathGui.BorderColor3 = Color3.new(0, 0, 0)
-	ObjectPathGui.Visible = true
-	ObjectPathGui.ZIndex = 1
-	ObjectPathGui.Rotation = 0
-	ObjectPathGui.AnchorPoint = Vector2.new(0, 0)
-	ObjectPathGui.AutomaticSize = Enum.AutomaticSize.None
-	ObjectPathGui.ClipsDescendants = false
-	ObjectPathGui.LayoutOrder = 0
-	ObjectPathGui.Transparency = 0
-	ObjectPathGui.Selectable = true
-	ObjectPathGui.Active = true
-	ObjectPathGui.Draggable = false
-	ObjectPathGui.Text = ""
-	ObjectPathGui.TextColor3 = Color3.new(1, 1, 1)
-	ObjectPathGui.TextSize = 14
-	ObjectPathGui.Font = Enum.Font.Code
-	ObjectPathGui.TextScaled = true
-	ObjectPathGui.TextWrapped = true
-	ObjectPathGui.TextXAlignment = Enum.TextXAlignment.Center
-	ObjectPathGui.TextYAlignment = Enum.TextYAlignment.Center
-	ObjectPathGui.RichText = true
-	ObjectPathGui.ClearTextOnFocus = false
-	ObjectPathGui.MultiLine = false
-	ObjectPathGui.PlaceholderText = "Object Path Here"
-	ObjectPathGui.PlaceholderColor3 = Color3.new(0.7, 0.7, 0.7)
-	ObjectPathGui.ShowNativeInput = true
-	ObjectPathGui.MaxVisibleGraphemes = -1
-	ObjectPathGui.Parent = Frame
-
-	local CodeTextBox = Instance.new("TextBox")
-	CodeTextBox.Name = "CodeTextBox"
-	CodeTextBox.Position = UDim2.new(0.131579, 0, 0.0255474, 0)
-	CodeTextBox.Size = UDim2.new(0.816121, 0, 0.724088, 0)
-	CodeTextBox.BackgroundColor3 = Color3.new(0.266667, 0.266667, 0.266667)
-	CodeTextBox.BackgroundTransparency = 0
-	CodeTextBox.BorderSizePixel = 0
-	CodeTextBox.BorderColor3 = Color3.new(0, 0, 0)
-	CodeTextBox.Visible = true
-	CodeTextBox.ZIndex = 1
-	CodeTextBox.Rotation = 0
-	CodeTextBox.AnchorPoint = Vector2.new(0, 0)
-	CodeTextBox.AutomaticSize = Enum.AutomaticSize.None
-	CodeTextBox.ClipsDescendants = false
-	CodeTextBox.LayoutOrder = 0
-	CodeTextBox.Transparency = 0
-	CodeTextBox.Selectable = true
-	CodeTextBox.Active = true
-	CodeTextBox.Draggable = false
-	CodeTextBox.Text = ""
-	CodeTextBox.TextColor3 = Color3.new(1, 1, 1)
-	CodeTextBox.TextSize = 15
-	CodeTextBox.Font = Enum.Font.Code
-	CodeTextBox.TextScaled = false
-	CodeTextBox.TextWrapped = true
-	CodeTextBox.TextXAlignment = Enum.TextXAlignment.Left
-	CodeTextBox.TextYAlignment = Enum.TextYAlignment.Top
-	CodeTextBox.RichText = true
-	CodeTextBox.ClearTextOnFocus = false
-	CodeTextBox.MultiLine = true
-	CodeTextBox.PlaceholderText = ""
-	CodeTextBox.TextEditable = false
-	CodeTextBox.PlaceholderColor3 = Color3.new(0.560784, 0.560784, 0.560784)
-	CodeTextBox.ShowNativeInput = true
-	CodeTextBox.MaxVisibleGraphemes = -1
-	CodeTextBox.Parent = Frame
-
-    CopyToClipboardButton.MouseButton1Click:Connect(function()
-		if ScreenGui and ScreenGui.Frame.CodeTextBox.Text ~= "" then
-			CopyToClipboard(ScreenGui.Frame.CodeTextBox.Text)
-		end
-	end)
-
-	AnalyseScriptsButton.MouseButton1Click:Connect(function()
-		AnalyzeScripts()
-	end)
-
-	SearchButton.MouseButton1Click:Connect(function()
-		SearchScripts()
-	end)
-
-	ObjectPathGui.FocusLost:Connect(function()
-		ObjectPath = ObjectPathGui.Text
-	end)
-
-	ScreenGui = Roblox_Object_Finder
-	return Roblox_Object_Finder
-end
-
-SetupUi()
-
-while not ScreenGui do
-    task.wait()
-end
-
-ScreenGui.AncestryChanged:Connect(function(_, Parent)
-    if not Parent then
-        ScreenGui = nil
-    end
-end)
